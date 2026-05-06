@@ -38,7 +38,6 @@ var scores = new[]
     new { studentId = 2, score = 90 },
     new { studentId = 3, score = 85 },
     new { studentId = 4, score = 85 },
-    new { studentId = 5, score = 85 },
 };
 
 // Inner Join
@@ -58,5 +57,28 @@ var innerJoinQuery =
 
 foreach (var item in innerJoinQuery)
 {
-    Console.WriteLine($"Id: {item.Id}, {item.Name}, Age: {item.Age}, Score: {item.score}");
+    Console.WriteLine(
+        $"Inner Join: --- Id: {item.Id}, {item.Name}, Age: {item.Age}, Score: {item.score}"
+    );
+}
+Console.WriteLine("--------------------------------------------------");
+
+//Left Join
+
+var leftJoinQuery =
+    from student in students
+    join score in scores on student.Id equals score.studentId into studentScores
+    from Score in studentScores.DefaultIfEmpty()
+    select new
+    {
+        student.Id,
+        student.Name,
+        student.Age,
+        Score = Score?.score ?? 0,
+    };
+foreach (var item in leftJoinQuery)
+{
+    Console.WriteLine(
+        $"LeftJoin: --- Id: {item.Id}, {item.Name}, Age: {item.Age}, Score: {item.Score}"
+    );
 }
