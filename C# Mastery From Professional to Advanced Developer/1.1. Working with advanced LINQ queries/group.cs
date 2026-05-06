@@ -1,9 +1,9 @@
 public class Employee
 {
-    public string Name { get; set; }
-    public string Department { get; set; }
-    public decimal Salary { get; set; }
-    public string Location { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Department { get; set; } = string.Empty;
+    public decimal Salary { get; set; } = decimal.MinValue;
+    public string Location { get; set; } = string.Empty;
 }
 
 public class Program
@@ -98,6 +98,31 @@ public class Program
             foreach (var emp in employee.Employees)
             {
                 Console.WriteLine($" - {emp.Name}");
+            }
+        }
+        //group by multiple keys with conditions
+
+        var groupedEmployeesWithCondition = employees
+            .GroupBy(e => new { e.Department, e.Location })
+            .Where(g => g.Sum(e => e.Salary) >= 50000)
+            .Select(g => new
+            {
+                Department = g.Key.Department,
+                Location = g.Key.Location,
+                Employees = g.ToList(),
+                TotalSalary = g.Sum(e => e.Salary),
+            });
+        Console.WriteLine(
+            $"Group of employees have total salary at least 50000 by Department and Location:"
+        );
+        foreach (var employee in groupedEmployeesWithCondition)
+        {
+            Console.WriteLine(
+                $"Department: {employee.Department}, Location: {employee.Location}, Total Salary: {employee.TotalSalary}"
+            );
+            foreach (var emp in employee.Employees)
+            {
+                Console.WriteLine($" - {emp.Name} - {emp.Salary}");
             }
         }
     }
