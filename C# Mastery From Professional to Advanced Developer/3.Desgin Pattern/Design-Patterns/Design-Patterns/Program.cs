@@ -122,25 +122,45 @@ public class SmsNotificationService : INotificationService
     }
 }
 
+//5. Get Product Shipping Service
+
+public class ShippingService
+{
+    public IShippingService getProductShippingService(string productName)
+    {
+        switch (productName)
+        {
+            case "Laptop":
+                return new LaptopShippingService();
+
+            case "Phone":
+                return new PhoneShippingService();
+
+            default:
+                return new TabletShippingService();
+        }
+    }
+}
+
 // Finally, we can use these services in our OrderService
 
 public class OrderService
 {
     private readonly IOrderValidator _validator;
     private readonly IDbService _dbService;
-    private readonly IShippingService _shippingService;
     private readonly INotificationService _notificationService;
+    private readonly ShippingService _shippingServiceMethod;
 
     public OrderService(
         IOrderValidator validator,
         IDbService dbService,
-        IShippingService shippingService,
+        ShippingService shippingServiceMethod,
         INotificationService notificationService
     )
     {
         _validator = validator;
         _dbService = dbService;
-        _shippingService = shippingService;
+        _shippingServiceMethod = shippingServiceMethod;
         _notificationService = notificationService;
     }
 
@@ -149,7 +169,7 @@ public class OrderService
         _validator.Validate(productName, quantity);
         _dbService.Connect("Server=...;Database=...");
         _dbService.SaveOrder(productName, quantity);
-        _shippingService.Ship(userEmail);
+        _shippingServiceMethod.getProductShippingService(productName).Ship(userEmail);
         _notificationService.Send(userEmail, productName, "Order confirmed!");
     }
 }
@@ -160,17 +180,18 @@ public class Program
     {
         var validator = new OrderQuantityValidator();
         var dbService = new SqlDBService();
-        var shippingService = new LaptopShippingService();
         var notificationService = new EmailNotificationService();
+        var shippingServiceMethod = new ShippingService();
+
         var orderService = new OrderService(
             validator,
             dbService,
-            shippingService,
+            shippingServiceMethod,
             notificationService
         );
         orderService.PlaceOrder("Laptop", 1, "kai1nguyen@gmail.com");
-        orderService.PlaceOrder("Laptop", 2, "kai2nguyen@gmail.com");
-        orderService.PlaceOrder("Laptop", 3, "kai3nguyen@gmail.com");
-        orderService.PlaceOrder("Laptop", 4, "kai4nguyen@gmail.com");
+        orderService.PlaceOrder("Tablet", 2, "kai2nguyen@gmail.com");
+        orderService.PlaceOrder("Phone", 3, "kai3nguyen@gmail.com");
+        orderService.PlaceOrder("abc", 4, "kai4nguyen@gmail.com");
     }
 }
