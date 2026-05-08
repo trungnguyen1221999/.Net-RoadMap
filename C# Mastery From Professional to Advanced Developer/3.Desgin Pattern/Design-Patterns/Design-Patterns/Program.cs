@@ -22,176 +22,237 @@
 
 // TURN THIS SPAGHETTI CODE INTO A BETTER DESIGN USING THE STRATEGY PATTERN
 
-//I can divide this OrderService to 4 parts
+//I can divide this OrderService to 6 parts
 //- Validation
-//- Connect to database and save order
-//- Shipping
+//- Connect to database
+//-Place Order
+//- Save order to database
+//- Shipping for different products
 //- Send notification
 
 //1. Validation
+
 public interface IOrderValidator
 {
-    void Validate(string productName, int quantity);
+    void Validate(string productName, int quantity) { }
 }
 
-public class OrderQuantityValidator : IOrderValidator
+public class OrderValidator : IOrderValidator
 {
     public void Validate(string productName, int quantity)
     {
         if (quantity <= 0)
             throw new Exception("Quantity must be greater than 0");
+        else
+            Console.WriteLine("Products are on stock");
     }
 }
 
-//2. Connect to database and save order
+//2. Connect to database
 
-public interface IDbService
+public interface IDatabaseConnection
 {
-    //Connect to DB
-    void Connect(string connectionString);
-
-    //Save order to DB
-    void SaveOrder(string productName, int quantity);
+    void Connect(string connectionString) { }
 }
 
-public class SqlDBService : IDbService
+public class PostgresqlConnection : IDatabaseConnection
 {
-    public void Connect(string SqlConnectionString)
+    public void Connect(string postgresqlConnectionString)
     {
-        Console.WriteLine(
-            "Connect to SQL database using connection string: " + SqlConnectionString
-        );
-    }
-
-    public void SaveOrder(string productName, int quantity)
-    {
-        Console.WriteLine($"Saving order to SQL database: {productName} x {quantity}");
+        Console.WriteLine("Connected to Postgresql database");
     }
 }
 
-//3. Shipping
-public interface IShippingService
-{
-    void Ship(string userEmail);
-};
+//4. Save order to database
 
-public class LaptopShippingService : IShippingService
+public interface IOrderRepository
 {
-    public void Ship(string userEmail)
+    void SaveOrder(string userEmail, string productName, int quantity) { }
+}
+
+public class OrderRepository : IOrderRepository
+{
+    public void SaveOrder(string userEmail, string productName, int quantity)
     {
-        Console.WriteLine($"Shipping Laptop to {userEmail} — special handling required");
+        Console.WriteLine($"Order for {quantity} {productName} from {userEmail} saved to database");
     }
-};
+}
 
-public class PhoneShippingService : IShippingService
+//5. Shipping for different products
+
+public interface IShippingStrategy
 {
-    public void Ship(string userEmail)
-    {
-        Console.WriteLine($"Shipping Phone to {userEmail}");
-    }
-};
+    void Ship(string productName, int quantity) { }
+}
 
-public class TabletShippingService : IShippingService
+public class LaptopShipping : IShippingStrategy
 {
-    public void Ship(string userEmail)
+    public void Ship(string productName, int quantity)
     {
-        Console.WriteLine($"Shipping Tablet to {userEmail}");
+        Console.WriteLine($"Shipping x{quantity} {productName} with special handling");
     }
-};
+}
 
-//4. Send notification
+public class TabletShipping : IShippingStrategy
+{
+    public void Ship(string productName, int quantity)
+    {
+        Console.WriteLine($"Shipping x{quantity} {productName} with medium package");
+    }
+}
+
+public class PhoneShipping : IShippingStrategy
+{
+    public void Ship(string productName, int quantity)
+    {
+        Console.WriteLine($"Shipping x{quantity} {productName} with small package");
+    }
+}
+
+public class OtherShipping : IShippingStrategy
+{
+    public void Ship(string productName, int quantity)
+    {
+        Console.WriteLine($"Shipping x{quantity} {productName} with normal package");
+    }
+}
+
+//public class ShippingContext
+//{
+//    public void ShipProduct(string productName, int quantity)
+//    {
+//        IShippingStrategy shippingStrategy;
+//        switch (productName)
+//        {
+//            case "Laptop":
+//                shippingStrategy = new LaptopShipping();
+//                break;
+
+// case "Tablet": shippingStrategy = new TabletShipping(); break;
+
+// case "Phone": shippingStrategy = new PhoneShipping(); break;
+
+//            default:
+//                shippingStrategy = new OtherShipping();
+//                break;
+//        }
+//        shippingStrategy.Ship(productName, quantity);
+//    }
+//}
+public class ShippingContext
+{
+    // Dictionary map tên sản phẩm → công thức tạo shipping strategy
+    private readonly Dictionary<string, Func<IShippingStrategy>> _strategies = new()
+    {
+        { "Laptop", () => new LaptopShipping() },
+        { "Tablet", () => new TabletShipping() },
+        { "Phone", () => new PhoneShipping() },
+    };
+
+    // Muốn thêm "TV" → gọi Register, không sửa ShipProduct
+    public void Register(string productName, Func<IShippingStrategy> creator)
+    {
+        _strategies[productName] = creator;
+    }
+
+    public void ShipProduct(string productName, int quantity)
+    {
+        // TryGetValue — tìm trong Dictionary, nếu không có thì dùng OtherShipping
+        var strategy = _strategies.TryGetValue(productName, out var creator)
+            ? creator()
+            : new OtherShipping();
+
+        strategy.Ship(productName, quantity);
+    }
+}
+
+//6. Send notification
 
 public interface INotificationService
 {
-    void Send(string userEmail, string productName, string message);
-};
+    void SendNotification(string userEmail, string productName) { }
+}
 
 public class EmailNotificationService : INotificationService
 {
-    public void Send(string userEmail, string productName, string message)
+    public void SendNotification(string userEmail, string productName)
     {
-        Console.WriteLine($"Sending email to {userEmail}: {message} about {productName}");
-    }
-};
-
-public class SmsNotificationService : INotificationService
-{
-    public void Send(string userEmail, string productName, string message)
-    {
-        Console.WriteLine($"Sending SMS to {userEmail}: {message} about {productName}");
+        Console.WriteLine($"Sending email to {userEmail} about order of {productName}");
     }
 }
 
-//5. Get Product Shipping Service
-
-public class ShippingService
+public class SMSNotificationService : INotificationService
 {
-    public IShippingService getProductShippingService(string productName)
+    public void SendNotification(string userEmail, string productName)
     {
-        switch (productName)
-        {
-            case "Laptop":
-                return new LaptopShippingService();
-
-            case "Phone":
-                return new PhoneShippingService();
-
-            default:
-                return new TabletShippingService();
-        }
+        Console.WriteLine($"Sending SMS to {userEmail} about order of {productName}");
     }
 }
 
-// Finally, we can use these services in our OrderService
+// OrderService
 
 public class OrderService
 {
-    private readonly IOrderValidator _validator;
-    private readonly IDbService _dbService;
+    private readonly IOrderValidator _orderValidator;
+    private readonly IDatabaseConnection _databaseConnection;
+    private readonly IOrderRepository _orderRepository;
+    private readonly ShippingContext _shippingContext;
     private readonly INotificationService _notificationService;
-    private readonly ShippingService _shippingServiceMethod;
 
     public OrderService(
-        IOrderValidator validator,
-        IDbService dbService,
-        ShippingService shippingServiceMethod,
+        IOrderValidator orderValidator,
+        IDatabaseConnection databaseConnection,
+        IOrderRepository orderRepository,
+        ShippingContext shippingContext,
         INotificationService notificationService
     )
     {
-        _validator = validator;
-        _dbService = dbService;
-        _shippingServiceMethod = shippingServiceMethod;
+        _orderValidator = orderValidator;
+        _databaseConnection = databaseConnection;
+        _orderRepository = orderRepository;
+        _shippingContext = shippingContext;
         _notificationService = notificationService;
+    }
+
+    public void ConnectToDatabase(string connectionString)
+    {
+        _databaseConnection.Connect(connectionString);
+        Console.WriteLine(
+            "-----------------------------------------------------------------------------------"
+        );
     }
 
     public void PlaceOrder(string productName, int quantity, string userEmail)
     {
-        _validator.Validate(productName, quantity);
-        _dbService.Connect("Server=...;Database=...");
-        _dbService.SaveOrder(productName, quantity);
-        _shippingServiceMethod.getProductShippingService(productName).Ship(userEmail);
-        _notificationService.Send(userEmail, productName, "Order confirmed!");
+        _orderValidator.Validate(productName, quantity);
+        _orderRepository.SaveOrder(userEmail, productName, quantity);
+        _notificationService.SendNotification(userEmail, productName);
+        _shippingContext.ShipProduct(productName, quantity);
+        Console.WriteLine(
+            "-----------------------------------------------------------------------------------"
+        );
     }
 }
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static void Main()
     {
-        var validator = new OrderQuantityValidator();
-        var dbService = new SqlDBService();
-        var notificationService = new EmailNotificationService();
-        var shippingServiceMethod = new ShippingService();
-
+        var shippingContext = new ShippingContext();
+        shippingContext.Register("TV", () => new OtherShipping());
         var orderService = new OrderService(
-            validator,
-            dbService,
-            shippingServiceMethod,
-            notificationService
+            new OrderValidator(),
+            new PostgresqlConnection(),
+            new OrderRepository(),
+            shippingContext,
+            new EmailNotificationService()
         );
-        orderService.PlaceOrder("Laptop", 1, "kai1nguyen@gmail.com");
-        orderService.PlaceOrder("Tablet", 2, "kai2nguyen@gmail.com");
-        orderService.PlaceOrder("Phone", 3, "kai3nguyen@gmail.com");
-        orderService.PlaceOrder("abc", 4, "kai4nguyen@gmail.com");
+        orderService.ConnectToDatabase("Server=...;Database=...");
+
+        orderService.PlaceOrder("Laptop", 1, "email1@gmail.com");
+        orderService.PlaceOrder("Phone", 2, "email2@gmail.com");
+        orderService.PlaceOrder("Tablet", 3, "email3@gmail.com");
+        orderService.PlaceOrder("Bed", 1, "email4@gmail.com");
+        orderService.PlaceOrder("TV", 3, "email5@gmail.com");
     }
 }
