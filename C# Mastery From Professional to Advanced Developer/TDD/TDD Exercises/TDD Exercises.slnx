@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="DiscountService/DiscountService.csproj" />
+  <Project Path="DiscountServiceTest/DiscountServiceTest.csproj" />
+</Solution>
