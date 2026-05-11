@@ -1,0 +1,25 @@
+@Api_HostAddress = http://localhost:5143
+
+GET {{Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+POST {{Api_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "userEmail": "abc@gmail.com",
+  "productName": "Laptop",
+  "qty": 2
+}
+
+###
+POST {{Api_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "userEmail": "abc@gmail.com",
+  "productName": "asd",
+  "qty": 1313
+}
+
